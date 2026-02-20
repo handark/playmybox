@@ -1,14 +1,10 @@
-import { upload } from "@vercel/blob/client";
 import { getApiUrl } from "./utils";
 
 class ApiClient {
   private baseUrl: string;
-  private isLocalhost: boolean;
 
   constructor() {
     this.baseUrl = getApiUrl();
-    this.isLocalhost = typeof window !== "undefined" &&
-      (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
   }
 
   private getToken(): string | null {
@@ -63,42 +59,25 @@ class ApiClient {
   }
 
   /**
-   * Upload a single file using Vercel Blob client upload
-   * Falls back to direct API upload for localhost (CORS issues with Blob)
+   * Upload a single file through API
+   * Note: Limited to ~4.5MB on Vercel serverless functions
+   * For larger files, Vercel Blob client upload needs proper configuration
    */
   async uploadFile<T = unknown>(file: File): Promise<T> {
-    // Use direct API upload for localhost (Vercel Blob client has CORS issues locally)
-    if (this.isLocalhost) {
-      const formData = new FormData();
-      formData.append("file", file);
+    const formData = new FormData();
+    formData.append("file", file);
 
-      const res = await fetch(`${this.baseUrl}/tracks/upload`, {
-        method: "POST",
-        headers: this.headers(),
-        body: formData,
-      });
+    const res = await fetch(`${this.baseUrl}/tracks/upload`, {
+      method: "POST",
+      headers: this.headers(),
+      body: formData,
+    });
 
-      if (!res.ok) {
-        throw new Error(await res.text());
-      }
-
-      return res.json();
+    if (!res.ok) {
+      throw new Error(await res.text());
     }
 
-    // Production: Upload directly to Vercel Blob with client upload
-    const blob = await upload(file.name, file, {
-      access: "public",
-      handleUploadUrl: "/api/tracks/upload/blob",
-      clientPayload: JSON.stringify({
-        token: this.getToken(),
-      }),
-    });
-
-    // Complete the upload (parse metadata, create DB record)
-    return this.post<T>("/tracks/upload/complete", {
-      key: blob.url,
-      filename: file.name,
-    });
+    return res.json();
   }
 
   /**
