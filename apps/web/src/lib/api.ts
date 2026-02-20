@@ -1,3 +1,4 @@
+import { upload } from "@vercel/blob/client";
 import { getApiUrl } from "./utils";
 
 class ApiClient {
@@ -59,25 +60,27 @@ class ApiClient {
   }
 
   /**
-   * Upload a single file through API
-   * Note: Limited to ~4.5MB on Vercel serverless functions
-   * For larger files, Vercel Blob client upload needs proper configuration
+   * Upload a single file using Vercel Blob client upload
+   * This bypasses the 4.5MB serverless limit by uploading directly to Blob storage
    */
   async uploadFile<T = unknown>(file: File): Promise<T> {
-    const formData = new FormData();
-    formData.append("file", file);
+    // Get the full URL for the blob upload handler
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
 
-    const res = await fetch(`${this.baseUrl}/tracks/upload`, {
-      method: "POST",
-      headers: this.headers(),
-      body: formData,
+    // Upload directly to Vercel Blob
+    const blob = await upload(file.name, file, {
+      access: "private",
+      handleUploadUrl: `${origin}/api/tracks/upload/blob`,
+      clientPayload: JSON.stringify({
+        token: this.getToken(),
+      }),
     });
 
-    if (!res.ok) {
-      throw new Error(await res.text());
-    }
-
-    return res.json();
+    // Complete the upload (parse metadata, create DB record)
+    return this.post<T>("/tracks/upload/complete", {
+      key: blob.url,
+      filename: file.name,
+    });
   }
 
   /**
