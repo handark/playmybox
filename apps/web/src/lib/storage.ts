@@ -9,6 +9,7 @@ export async function uploadToStorage(
   contentType: string
 ): Promise<string> {
   const blob = await put(filename, body, {
+    access: "private",
     contentType,
     addRandomSuffix: false,
   });
