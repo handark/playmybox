@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
-import { deleteFromR2 } from "@/lib/storage";
+import { deleteFromStorage } from "@/lib/storage";
 import { updateTrackSchema } from "@/lib/validations";
 
 type RouteContext = {
@@ -95,11 +95,10 @@ export async function DELETE(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Track not found" }, { status: 404 });
     }
 
-    // Delete from R2
-    await deleteFromR2(track.storageKey).catch(() => {});
+    // Delete from Vercel Blob
+    await deleteFromStorage(track.storageKey).catch(() => {});
     if (track.coverUrl) {
-      const coverKey = track.coverUrl.split("/").slice(-2).join("/");
-      await deleteFromR2(coverKey).catch(() => {});
+      await deleteFromStorage(track.coverUrl).catch(() => {});
     }
 
     // Delete from database

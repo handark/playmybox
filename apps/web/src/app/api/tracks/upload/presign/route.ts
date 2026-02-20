@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { getAuthUser } from "@/lib/auth";
 import { presignUploadSchema } from "@/lib/validations";
+import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 
 export async function POST(request: Request) {
   const user = await getAuthUser(request);
@@ -20,55 +21,13 @@ export async function POST(request: Request) {
       );
     }
 
-    const { contentType } = result.data;
+    // Generate a unique key for the track
     const key = `tracks/${randomUUID()}.mp3`;
 
-    // Generate a presigned URL for direct upload to R2
-    // Using Cloudflare's S3-compatible API
-    const accountId = process.env.R2_ACCOUNT_ID;
-    const bucket = process.env.R2_BUCKET_NAME || "playmybox";
-    const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-    const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-
-    if (!accessKeyId || !secretAccessKey) {
-      // If S3 credentials not available, return the key and let client use fallback
-      // The complete endpoint will handle the upload
-      return NextResponse.json({
-        key,
-        uploadUrl: null,
-        useFallback: true,
-        expiresIn: 3600,
-      });
-    }
-
-    // Using AWS SDK for presigned URL
-    const { S3Client, PutObjectCommand } = await import("@aws-sdk/client-s3");
-    const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
-
-    // Use R2_ENDPOINT if provided, otherwise construct from account ID
-    const endpoint = process.env.R2_ENDPOINT || `https://${accountId}.r2.cloudflarestorage.com`;
-
-    const client = new S3Client({
-      region: "auto",
-      endpoint,
-      forcePathStyle: true, // R2 requires path-style URLs, not virtual-hosted
-      credentials: {
-        accessKeyId,
-        secretAccessKey,
-      },
-    });
-
-    const command = new PutObjectCommand({
-      Bucket: bucket,
-      Key: key,
-      ContentType: contentType || "audio/mpeg",
-    });
-
-    const uploadUrl = await getSignedUrl(client, command, { expiresIn: 3600 });
-
+    // Return the key - client will use handleUpload for direct upload
     return NextResponse.json({
       key,
-      uploadUrl,
+      clientUpload: true,
       expiresIn: 3600,
     });
   } catch (error) {

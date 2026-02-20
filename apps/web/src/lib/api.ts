@@ -1,11 +1,5 @@
+import { upload } from "@vercel/blob/client";
 import { getApiUrl } from "./utils";
-
-interface PresignResponse {
-  key: string;
-  uploadUrl: string | null;
-  useFallback?: boolean;
-  expiresIn: number;
-}
 
 class ApiClient {
   private baseUrl: string;
@@ -66,56 +60,23 @@ class ApiClient {
   }
 
   /**
-   * Upload a single file using presigned URL flow with fallback
-   * Primary: Presigned URL → Direct to R2 → Complete
-   * Fallback: Direct upload through API (for local dev or when presigned fails)
+   * Upload a single file using Vercel Blob client upload
    */
   async uploadFile<T = unknown>(file: File): Promise<T> {
-    try {
-      // Try presigned URL flow first
-      const presign = await this.post<PresignResponse>("/tracks/upload/presign", {
-        filename: file.name,
-        contentType: file.type || "audio/mpeg",
-      });
-
-      if (presign.uploadUrl && !presign.useFallback) {
-        // Direct upload to R2 with presigned URL
-        const uploadRes = await fetch(presign.uploadUrl, {
-          method: "PUT",
-          body: file,
-          headers: { "Content-Type": "audio/mpeg" },
-        });
-
-        if (uploadRes.ok) {
-          // Complete upload (parse metadata, create DB record)
-          return this.post<T>("/tracks/upload/complete", {
-            key: presign.key,
-            filename: file.name,
-          });
-        }
-
-        console.warn("Presigned upload failed, falling back to direct upload");
-      }
-    } catch (err) {
-      console.warn("Presigned flow failed, using fallback:", err);
-    }
-
-    // Fallback: Direct upload through API
-    // Works locally but has 4.5MB limit on Vercel
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const res = await fetch(`${this.baseUrl}/tracks/upload`, {
-      method: "POST",
-      headers: this.headers(),
-      body: formData,
+    // Upload directly to Vercel Blob with client upload
+    const blob = await upload(file.name, file, {
+      access: "public",
+      handleUploadUrl: "/api/tracks/upload/blob",
+      clientPayload: JSON.stringify({
+        token: this.getToken(),
+      }),
     });
 
-    if (!res.ok) {
-      throw new Error(await res.text());
-    }
-
-    return res.json();
+    // Complete the upload (parse metadata, create DB record)
+    return this.post<T>("/tracks/upload/complete", {
+      key: blob.url,
+      filename: file.name,
+    });
   }
 
   /**

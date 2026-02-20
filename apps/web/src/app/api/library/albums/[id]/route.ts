@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
-import { deleteFromR2 } from "@/lib/storage";
+import { deleteFromStorage } from "@/lib/storage";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -59,22 +59,20 @@ export async function DELETE(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Album not found" }, { status: 404 });
     }
 
-    // Delete all tracks' files from R2
+    // Delete all tracks' files from Vercel Blob
     for (const track of album.tracks) {
-      await deleteFromR2(track.storageKey).catch(() => {});
+      await deleteFromStorage(track.storageKey).catch(() => {});
       if (track.coverUrl) {
-        const coverKey = track.coverUrl.split("/").slice(-2).join("/");
-        await deleteFromR2(coverKey).catch(() => {});
+        await deleteFromStorage(track.coverUrl).catch(() => {});
       }
     }
 
     // Delete all tracks (cascade deletes playlist_tracks and liked_tracks)
     await prisma.track.deleteMany({ where: { albumId: id } });
 
-    // Delete album cover from R2
+    // Delete album cover from Vercel Blob
     if (album.coverUrl) {
-      const coverKey = album.coverUrl.split("/").slice(-2).join("/");
-      await deleteFromR2(coverKey).catch(() => {});
+      await deleteFromStorage(album.coverUrl).catch(() => {});
     }
 
     // Delete the album

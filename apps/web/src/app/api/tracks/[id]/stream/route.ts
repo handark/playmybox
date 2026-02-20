@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { getR2PublicUrl } from "@/lib/storage";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -18,7 +17,8 @@ export async function GET(request: Request, context: RouteContext) {
       return new Response("Track not found", { status: 404 });
     }
 
-    const publicUrl = `${getR2PublicUrl()}/${track.storageKey}`;
+    // storageKey is now the full Vercel Blob URL
+    const blobUrl = track.storageKey;
     const range = request.headers.get("range");
 
     const headers: HeadersInit = {};
@@ -26,9 +26,9 @@ export async function GET(request: Request, context: RouteContext) {
       headers["Range"] = range;
     }
 
-    const r2Response = await fetch(publicUrl, { headers });
+    const blobResponse = await fetch(blobUrl, { headers });
 
-    if (!r2Response.ok && r2Response.status !== 206) {
+    if (!blobResponse.ok && blobResponse.status !== 206) {
       return new Response("Failed to stream track", { status: 500 });
     }
 
@@ -38,18 +38,18 @@ export async function GET(request: Request, context: RouteContext) {
       "Cache-Control": "public, max-age=31536000",
     });
 
-    const contentRange = r2Response.headers.get("content-range");
+    const contentRange = blobResponse.headers.get("content-range");
     if (contentRange) {
       responseHeaders.set("Content-Range", contentRange);
     }
 
-    const contentLength = r2Response.headers.get("content-length");
+    const contentLength = blobResponse.headers.get("content-length");
     if (contentLength) {
       responseHeaders.set("Content-Length", contentLength);
     }
 
-    return new Response(r2Response.body, {
-      status: r2Response.status,
+    return new Response(blobResponse.body, {
+      status: blobResponse.status,
       headers: responseHeaders,
     });
   } catch (error) {

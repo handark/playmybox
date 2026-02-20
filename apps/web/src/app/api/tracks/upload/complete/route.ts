@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 import * as musicMetadata from "music-metadata";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
-import { uploadToR2, getPublicUrl, getR2PublicUrl } from "@/lib/storage";
+import { uploadToStorage } from "@/lib/storage";
 import { completeUploadSchema } from "@/lib/validations";
 
 export async function POST(request: Request) {
@@ -25,9 +25,11 @@ export async function POST(request: Request) {
 
     const { key, filename } = result.data;
 
-    // Fetch the uploaded file from R2 to parse metadata
-    const publicUrl = `${getR2PublicUrl()}/${key}`;
-    const response = await fetch(publicUrl);
+    // key is now the full Vercel Blob URL
+    const blobUrl = key;
+
+    // Fetch the uploaded file from Vercel Blob to parse metadata
+    const response = await fetch(blobUrl);
 
     if (!response.ok) {
       return NextResponse.json(
@@ -76,9 +78,8 @@ export async function POST(request: Request) {
     let coverUrl: string | null = null;
     const picture = common.picture?.[0];
     if (picture) {
-      const coverKey = `covers/${randomUUID()}.${picture.format === "image/png" ? "png" : "jpg"}`;
-      await uploadToR2(coverKey, Buffer.from(picture.data), picture.format);
-      coverUrl = getPublicUrl(coverKey);
+      const coverFilename = `covers/${randomUUID()}.${picture.format === "image/png" ? "png" : "jpg"}`;
+      coverUrl = await uploadToStorage(coverFilename, Buffer.from(picture.data), picture.format);
 
       // Update album cover if it doesn't have one
       if (album && !album.coverUrl) {
@@ -107,7 +108,7 @@ export async function POST(request: Request) {
         duration: format.duration || 0,
         year: common.year,
         coverUrl,
-        storageKey: key,
+        storageKey: blobUrl, // Store the full Vercel Blob URL
         fileSize,
       },
       include: {
