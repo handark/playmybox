@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     });
 
     // Return tracks with likedAt timestamp
-    const tracks = liked.map((l) => ({ ...l.track, likedAt: l.likedAt }));
+    const tracks = liked.map((l: typeof liked[number]) => ({ ...l.track, likedAt: l.likedAt }));
 
     return NextResponse.json(tracks);
   } catch (error) {
