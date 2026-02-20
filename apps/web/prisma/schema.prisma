@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  password     String
+  createdAt    DateTime      @default(now())
+  playlists    Playlist[]
+  likedTracks  LikedTrack[]
+}
+
+model Artist {
+  id       String   @id @default(cuid())
+  name     String   @unique
+  imageUrl String?
+  albums   Album[]
+  tracks   Track[]
+}
+
+model Album {
+  id       String   @id @default(cuid())
+  name     String
+  artistId String
+  artist   Artist   @relation(fields: [artistId], references: [id])
+  coverUrl String?
+  year     Int?
+  tracks   Track[]
+
+  @@unique([name, artistId])
+}
+
+model Track {
+  id         String          @id @default(cuid())
+  title      String
+  artistId   String
+  artist     Artist          @relation(fields: [artistId], references: [id])
+  albumId    String?
+  album      Album?          @relation(fields: [albumId], references: [id])
+  genre      String?
+  duration   Float
+  year       Int?
+  coverUrl   String?
+  storageKey String
+  fileSize   Int
+  createdAt  DateTime        @default(now())
+  playlists  PlaylistTrack[]
+  likedBy    LikedTrack[]
+
+  @@index([artistId])
+  @@index([albumId])
+}
+
+model Playlist {
+  id          String          @id @default(cuid())
+  name        String
+  description String?
+  coverUrl    String?
+  userId      String
+  user        User            @relation(fields: [userId], references: [id])
+  tracks      PlaylistTrack[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model PlaylistTrack {
+  id         String   @id @default(cuid())
+  playlistId String
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  trackId    String
+  track      Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  order      Int
+  addedAt    DateTime @default(now())
+
+  @@unique([playlistId, trackId])
+  @@index([playlistId])
+}
+
+model LikedTrack {
+  id      String   @id @default(cuid())
+  userId  String
+  user    User     @relation(fields: [userId], references: [id])
+  trackId String
+  track   Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  likedAt DateTime @default(now())
+
+  @@unique([userId, trackId])
+  @@index([userId])
+}
