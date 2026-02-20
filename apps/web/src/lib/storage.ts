@@ -21,7 +21,7 @@ export async function uploadToStorage(
  * Get a signed download URL for a private blob (valid for 1 hour)
  */
 export async function getSignedUrl(blobUrl: string): Promise<string> {
-  const { url } = await getDownloadUrl(blobUrl);
+  const url = await getDownloadUrl(blobUrl);
   return url;
 }
 

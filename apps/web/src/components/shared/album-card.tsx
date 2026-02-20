@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Album } from "@/lib/types";
 import { Disc3 } from "lucide-react";
+import { getImageUrl } from "@/lib/utils";
 
 interface AlbumCardProps {
   album: Album;
@@ -16,7 +17,7 @@ export function AlbumCard({ album }: AlbumCardProps) {
     >
       {album.coverUrl ? (
         <img
-          src={album.coverUrl}
+          src={getImageUrl(album.coverUrl)}
           alt={album.name}
           className="w-full aspect-square rounded-md object-cover mb-3"
         />

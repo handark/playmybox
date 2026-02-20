@@ -2,7 +2,7 @@
 
 import { Track } from "@/lib/types";
 import { usePlayerStore } from "@/stores/player-store";
-import { formatDuration } from "@/lib/utils";
+import { formatDuration, getImageUrl } from "@/lib/utils";
 import { Play, Pause, Heart } from "lucide-react";
 import { api } from "@/lib/api";
 import { useState, useCallback } from "react";
@@ -158,7 +158,7 @@ function TrackRow({
       <div className="flex items-center gap-3 min-w-0">
         {track.coverUrl && (
           <img
-            src={track.coverUrl}
+            src={getImageUrl(track.coverUrl)}
             alt=""
             className="w-10 h-10 rounded object-cover"
           />

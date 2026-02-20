@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Album, Artist, Track } from "@/lib/types";
 import { TrackList } from "@/components/shared/track-list";
 import { usePlayerStore } from "@/stores/player-store";
-import { Disc3, Play, Trash2 } from "lucide-react";
+import { Disc3, Play, Trash2, Upload, ImagePlus } from "lucide-react";
+import { getImageUrl } from "@/lib/utils";
 
 interface AlbumDetail extends Album {
   artist: Artist;
@@ -19,6 +20,8 @@ export default function AlbumPage() {
   const [album, setAlbum] = useState<AlbumDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const { play } = usePlayerStore();
 
   const loadAlbum = useCallback(async () => {
@@ -42,10 +45,25 @@ export default function AlbumPage() {
       return;
     }
     try {
-      await api.delete(`/library/albums/${id}`);
+      await api.deleteAlbum(id);
       router.push("/library?tab=albums");
     } catch (err) {
       console.error("Failed to delete album", err);
+    }
+  };
+
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const updated = await api.uploadAlbumCover<AlbumDetail>(id, file);
+      setAlbum((prev) => prev ? { ...prev, coverUrl: updated.coverUrl } : null);
+    } catch (err) {
+      console.error("Failed to upload cover", err);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -64,17 +82,37 @@ export default function AlbumPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-end gap-6">
-        {album.coverUrl ? (
-          <img
-            src={album.coverUrl}
-            alt={album.name}
-            className="w-48 h-48 rounded-md object-cover shadow-lg"
+        <div className="relative group">
+          {album.coverUrl ? (
+            <img
+              src={getImageUrl(album.coverUrl)}
+              alt={album.name}
+              className="w-48 h-48 rounded-md object-cover shadow-lg"
+            />
+          ) : (
+            <div className="w-48 h-48 rounded-md bg-secondary flex items-center justify-center shadow-lg">
+              <Disc3 className="w-20 h-20 text-muted-foreground" />
+            </div>
+          )}
+          <button
+            onClick={() => coverInputRef.current?.click()}
+            disabled={uploading}
+            className="absolute inset-0 rounded-md bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+          >
+            {uploading ? (
+              <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <ImagePlus className="w-8 h-8 text-white" />
+            )}
+          </button>
+          <input
+            ref={coverInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleCoverUpload}
+            className="hidden"
           />
-        ) : (
-          <div className="w-48 h-48 rounded-md bg-secondary flex items-center justify-center shadow-lg">
-            <Disc3 className="w-20 h-20 text-muted-foreground" />
-          </div>
-        )}
+        </div>
         <div>
           <p className="text-xs text-muted-foreground uppercase tracking-wider">
             Album
@@ -98,6 +136,14 @@ export default function AlbumPage() {
           className="w-12 h-12 rounded-full bg-primary flex items-center justify-center hover:scale-105 transition-transform"
         >
           <Play className="w-5 h-5 text-primary-foreground ml-0.5" />
+        </button>
+        <button
+          onClick={() => coverInputRef.current?.click()}
+          disabled={uploading}
+          className="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+        >
+          <Upload className="w-4 h-4" />
+          {uploading ? "Uploading..." : "Change cover"}
         </button>
         <button
           onClick={handleDeleteAlbum}

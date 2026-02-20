@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Artist } from "@/lib/types";
 import { User } from "lucide-react";
+import { getImageUrl } from "@/lib/utils";
 
 interface ArtistCardProps {
   artist: Artist;
@@ -16,7 +17,7 @@ export function ArtistCard({ artist }: ArtistCardProps) {
     >
       {artist.imageUrl ? (
         <img
-          src={artist.imageUrl}
+          src={getImageUrl(artist.imageUrl)}
           alt={artist.name}
           className="w-full aspect-square rounded-full object-cover mb-3"
         />

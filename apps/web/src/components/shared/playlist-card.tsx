@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Playlist } from "@/lib/types";
 import { ListMusic } from "lucide-react";
+import { getImageUrl } from "@/lib/utils";
 
 interface PlaylistCardProps {
   playlist: Playlist;
@@ -16,7 +17,7 @@ export function PlaylistCard({ playlist }: PlaylistCardProps) {
     >
       {playlist.coverUrl ? (
         <img
-          src={playlist.coverUrl}
+          src={getImageUrl(playlist.coverUrl)}
           alt={playlist.name}
           className="w-full aspect-square rounded-md object-cover mb-3"
         />

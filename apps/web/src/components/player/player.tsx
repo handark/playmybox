@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { usePlayerStore } from "@/stores/player-store";
-import { formatDuration } from "@/lib/utils";
+import { formatDuration, getImageUrl } from "@/lib/utils";
 import {
   Play,
   Pause,
@@ -59,7 +59,7 @@ export function Player() {
       <div className="flex items-center gap-3 w-[30%] min-w-0">
         {currentTrack.coverUrl ? (
           <img
-            src={currentTrack.coverUrl}
+            src={getImageUrl(currentTrack.coverUrl)}
             alt={currentTrack.title}
             className="w-14 h-14 rounded object-cover"
           />
