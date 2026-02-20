@@ -51,6 +51,7 @@ export async function POST(request: Request) {
     const client = new S3Client({
       region: "auto",
       endpoint,
+      forcePathStyle: true, // R2 requires path-style URLs, not virtual-hosted
       credentials: {
         accessKeyId,
         secretAccessKey,
