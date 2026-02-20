@@ -67,8 +67,11 @@ class ApiClient {
     // Get the full URL for the blob upload handler
     const origin = typeof window !== "undefined" ? window.location.origin : "";
 
+    // Generate unique filename to avoid conflicts
+    const uniqueFilename = `tracks/${Date.now()}-${file.name}`;
+
     // Upload directly to Vercel Blob
-    const blob = await upload(file.name, file, {
+    const blob = await upload(uniqueFilename, file, {
       access: "private",
       handleUploadUrl: `${origin}/api/tracks/upload/blob`,
       clientPayload: JSON.stringify({

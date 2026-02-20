@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { getSignedUrl } from "@/lib/storage";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -18,16 +17,17 @@ export async function GET(request: Request, context: RouteContext) {
       return new Response("Track not found", { status: 404 });
     }
 
-    // Get signed URL for private blob
-    const signedUrl = await getSignedUrl(track.storageKey);
+    // Fetch private blob with Bearer token authorization
     const range = request.headers.get("range");
 
-    const headers: HeadersInit = {};
+    const headers: HeadersInit = {
+      Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
+    };
     if (range) {
       headers["Range"] = range;
     }
 
-    const blobResponse = await fetch(signedUrl, { headers });
+    const blobResponse = await fetch(track.storageKey, { headers });
 
     if (!blobResponse.ok && blobResponse.status !== 206) {
       return new Response("Failed to stream track", { status: 500 });

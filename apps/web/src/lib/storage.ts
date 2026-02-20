@@ -1,4 +1,4 @@
-import { put, del, head, getDownloadUrl } from "@vercel/blob";
+import { put, del, head } from "@vercel/blob";
 
 /**
  * Upload a file to Vercel Blob storage (private store)
@@ -18,11 +18,14 @@ export async function uploadToStorage(
 }
 
 /**
- * Get a signed download URL for a private blob (valid for 1 hour)
+ * Fetch private blob content using Bearer token authorization
  */
-export async function getSignedUrl(blobUrl: string): Promise<string> {
-  const url = await getDownloadUrl(blobUrl);
-  return url;
+export async function fetchPrivateBlob(blobUrl: string): Promise<Response> {
+  return fetch(blobUrl, {
+    headers: {
+      Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
+    },
+  });
 }
 
 /**

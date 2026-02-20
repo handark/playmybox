@@ -35,14 +35,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         return {
           allowedContentTypes: ["audio/mpeg", "audio/mp3", "application/octet-stream"],
           maximumSizeInBytes: 100 * 1024 * 1024, // 100MB max
-          tokenPayload: JSON.stringify({
-            userId,
-          }),
         };
-      },
-      onUploadCompleted: async ({ blob, tokenPayload }) => {
-        // Upload completed - client will call /complete to create track
-        console.log("Blob upload completed:", blob.url);
       },
     });
 

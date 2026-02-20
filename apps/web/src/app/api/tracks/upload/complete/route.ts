@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { uploadToStorage } from "@/lib/storage";
 import { completeUploadSchema } from "@/lib/validations";
+import { head } from "@vercel/blob";
 
 export async function POST(request: Request) {
   const user = await getAuthUser(request);
@@ -24,14 +25,17 @@ export async function POST(request: Request) {
     }
 
     const { key, filename } = result.data;
-
-    // key is now the full Vercel Blob URL
     const blobUrl = key;
 
-    // Fetch the uploaded file from Vercel Blob to parse metadata
-    const response = await fetch(blobUrl);
+    // Fetch the uploaded file with token authorization
+    const response = await fetch(blobUrl, {
+      headers: {
+        "Authorization": `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
+      },
+    });
 
     if (!response.ok) {
+      console.error("Failed to fetch blob:", response.status);
       return NextResponse.json(
         { error: "Failed to fetch uploaded file" },
         { status: 400 }
@@ -108,7 +112,7 @@ export async function POST(request: Request) {
         duration: format.duration || 0,
         year: common.year,
         coverUrl,
-        storageKey: blobUrl, // Store the full Vercel Blob URL
+        storageKey: blobUrl,
         fileSize,
       },
       include: {
