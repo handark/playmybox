@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getSignedUrl } from "@/lib/storage";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -17,8 +18,8 @@ export async function GET(request: Request, context: RouteContext) {
       return new Response("Track not found", { status: 404 });
     }
 
-    // storageKey is now the full Vercel Blob URL
-    const blobUrl = track.storageKey;
+    // Get signed URL for private blob
+    const signedUrl = await getSignedUrl(track.storageKey);
     const range = request.headers.get("range");
 
     const headers: HeadersInit = {};
@@ -26,7 +27,7 @@ export async function GET(request: Request, context: RouteContext) {
       headers["Range"] = range;
     }
 
-    const blobResponse = await fetch(blobUrl, { headers });
+    const blobResponse = await fetch(signedUrl, { headers });
 
     if (!blobResponse.ok && blobResponse.status !== 206) {
       return new Response("Failed to stream track", { status: 500 });
@@ -35,7 +36,7 @@ export async function GET(request: Request, context: RouteContext) {
     const responseHeaders = new Headers({
       "Content-Type": "audio/mpeg",
       "Accept-Ranges": "bytes",
-      "Cache-Control": "public, max-age=31536000",
+      "Cache-Control": "private, max-age=3600", // Cache for 1 hour (signed URL validity)
     });
 
     const contentRange = blobResponse.headers.get("content-range");

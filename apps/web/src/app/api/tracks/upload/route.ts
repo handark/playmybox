@@ -35,11 +35,11 @@ export async function POST(request: Request) {
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 
-      // Upload to Vercel Blob
+      // Upload to Vercel Blob (private store)
       const filename = `tracks/${randomUUID()}.mp3`;
       const blob = await put(filename, buffer, {
-        access: "public",
         contentType: "audio/mpeg",
+        addRandomSuffix: false,
       });
 
       // Parse metadata

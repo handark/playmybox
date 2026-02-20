@@ -1,7 +1,7 @@
-import { put, del, head } from "@vercel/blob";
+import { put, del, head, getDownloadUrl } from "@vercel/blob";
 
 /**
- * Upload a file to Vercel Blob storage
+ * Upload a file to Vercel Blob storage (private store)
  */
 export async function uploadToStorage(
   filename: string,
@@ -9,11 +9,19 @@ export async function uploadToStorage(
   contentType: string
 ): Promise<string> {
   const blob = await put(filename, body, {
-    access: "public",
     contentType,
+    addRandomSuffix: false,
   });
 
   return blob.url;
+}
+
+/**
+ * Get a signed download URL for a private blob (valid for 1 hour)
+ */
+export async function getSignedUrl(blobUrl: string): Promise<string> {
+  const { url } = await getDownloadUrl(blobUrl);
+  return url;
 }
 
 /**
