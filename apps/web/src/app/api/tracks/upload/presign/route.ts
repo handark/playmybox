@@ -45,9 +45,12 @@ export async function POST(request: Request) {
     const { S3Client, PutObjectCommand } = await import("@aws-sdk/client-s3");
     const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
 
+    // Use R2_ENDPOINT if provided, otherwise construct from account ID
+    const endpoint = process.env.R2_ENDPOINT || `https://${accountId}.r2.cloudflarestorage.com`;
+
     const client = new S3Client({
       region: "auto",
-      endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+      endpoint,
       credentials: {
         accessKeyId,
         secretAccessKey,

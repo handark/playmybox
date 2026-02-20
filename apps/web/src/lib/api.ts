@@ -66,43 +66,56 @@ class ApiClient {
   }
 
   /**
-   * Upload a single file using presigned URL flow
-   * 1. Get presigned URL from API
-   * 2. Upload directly to R2
-   * 3. Complete upload (parse metadata, create DB record)
+   * Upload a single file using presigned URL flow with fallback
+   * Primary: Presigned URL → Direct to R2 → Complete
+   * Fallback: Direct upload through API (for local dev or when presigned fails)
    */
   async uploadFile<T = unknown>(file: File): Promise<T> {
-    // Step 1: Get presigned URL
-    const presign = await this.post<PresignResponse>("/tracks/upload/presign", {
-      filename: file.name,
-      contentType: file.type || "audio/mpeg",
-    });
-
-    // Step 2: Upload to R2
-    if (presign.uploadUrl) {
-      // Direct upload to R2 with presigned URL
-      const uploadRes = await fetch(presign.uploadUrl, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": "audio/mpeg" },
+    try {
+      // Try presigned URL flow first
+      const presign = await this.post<PresignResponse>("/tracks/upload/presign", {
+        filename: file.name,
+        contentType: file.type || "audio/mpeg",
       });
 
-      if (!uploadRes.ok) {
-        throw new Error("Failed to upload to storage");
+      if (presign.uploadUrl && !presign.useFallback) {
+        // Direct upload to R2 with presigned URL
+        const uploadRes = await fetch(presign.uploadUrl, {
+          method: "PUT",
+          body: file,
+          headers: { "Content-Type": "audio/mpeg" },
+        });
+
+        if (uploadRes.ok) {
+          // Complete upload (parse metadata, create DB record)
+          return this.post<T>("/tracks/upload/complete", {
+            key: presign.key,
+            filename: file.name,
+          });
+        }
+
+        console.warn("Presigned upload failed, falling back to direct upload");
       }
-    } else {
-      // Fallback: upload through API (for small files or when presigned URLs aren't available)
-      // This would require a different endpoint that accepts file uploads
-      throw new Error(
-        "Presigned URL not available. Please configure R2 S3 credentials."
-      );
+    } catch (err) {
+      console.warn("Presigned flow failed, using fallback:", err);
     }
 
-    // Step 3: Complete upload (parse metadata, create DB record)
-    return this.post<T>("/tracks/upload/complete", {
-      key: presign.key,
-      filename: file.name,
+    // Fallback: Direct upload through API
+    // Works locally but has 4.5MB limit on Vercel
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch(`${this.baseUrl}/tracks/upload`, {
+      method: "POST",
+      headers: this.headers(),
+      body: formData,
     });
+
+    if (!res.ok) {
+      throw new Error(await res.text());
+    }
+
+    return res.json();
   }
 
   /**
