@@ -122,6 +122,60 @@ class ApiClient {
   getStreamUrl(trackId: string): string {
     return `${this.baseUrl}/tracks/${trackId}/stream`;
   }
+
+  /**
+   * Upload an image for an artist
+   */
+  async uploadArtistImage<T = unknown>(artistId: string, file: File): Promise<T> {
+    const formData = new FormData();
+    formData.append("image", file);
+
+    const res = await fetch(`${this.baseUrl}/library/artists/${artistId}`, {
+      method: "PATCH",
+      headers: this.headers(),
+      body: formData,
+    });
+
+    if (!res.ok) {
+      throw new Error(await res.text());
+    }
+
+    return res.json();
+  }
+
+  /**
+   * Upload a cover for an album
+   */
+  async uploadAlbumCover<T = unknown>(albumId: string, file: File): Promise<T> {
+    const formData = new FormData();
+    formData.append("cover", file);
+
+    const res = await fetch(`${this.baseUrl}/library/albums/${albumId}`, {
+      method: "PATCH",
+      headers: this.headers(),
+      body: formData,
+    });
+
+    if (!res.ok) {
+      throw new Error(await res.text());
+    }
+
+    return res.json();
+  }
+
+  /**
+   * Delete an artist and all related data
+   */
+  async deleteArtist(artistId: string): Promise<{ deleted: boolean }> {
+    return this.delete(`/library/artists/${artistId}`);
+  }
+
+  /**
+   * Delete an album and all related tracks
+   */
+  async deleteAlbum(albumId: string): Promise<{ deleted: boolean }> {
+    return this.delete(`/library/albums/${albumId}`);
+  }
 }
 
 export const api = new ApiClient();
